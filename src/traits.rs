@@ -26,7 +26,7 @@ pub trait SpadeNum: Signed + Clone + Debug + PartialOrd { }
 /// Floating point types that can be used with spade.
 ///
 /// Used by all operations that require precise division.
-pub trait SpadeFloat: SpadeNum + cg::BaseFloat { }
+pub trait SpadeFloat: SpadeNum + cg::BaseFloat + ::num::Float { }
 
 impl SpadeNum for i32 { }
 impl SpadeNum for i64 { }

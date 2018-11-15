@@ -147,7 +147,7 @@ fn to_f64_arr<V, S>(v: &V) -> [f64; 2]
     where V: TwoDimensional<Scalar=S>,
           S: FromPrimitive + ToPrimitive + SpadeFloat,
 {
-    [v.nth(0).to_f64().unwrap(), v.nth(1).to_f64().unwrap()]
+    [::num::ToPrimitive::to_f64(v.nth(0)).unwrap(), ::num::ToPrimitive::to_f64(v.nth(1)).unwrap()]
 }
 
 impl <S> DelaunayKernel<S> for FloatKernel

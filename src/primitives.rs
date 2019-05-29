@@ -12,16 +12,15 @@
 //! are important. If additional data needs to be stored per object, consider
 //! implementing `SpatialObject`.
 
-
-use cgmath::{Point3, Zero, One};
-use traits::{SpadeFloat, SpadeNum, SpatialObject};
-use point_traits::{PointN, PointNExtensions, TwoDimensional};
-use num::{Float, one, zero, Signed};
-use boundingrect::BoundingRect;
-use kernels::{TrivialKernel, DelaunayKernel};
+use crate::boundingrect::BoundingRect;
+use crate::kernels::{DelaunayKernel, TrivialKernel};
+use crate::point_traits::{PointN, PointNExtensions, TwoDimensional};
+use crate::traits::{SpadeFloat, SpadeNum, SpatialObject};
+use cgmath::{One, Point3, Zero};
+use num::{one, zero, Float, Signed};
 
 #[cfg(feature = "serde_serialize")]
-use serde::{Serialize, Deserialize};
+use serde::{Deserialize, Serialize};
 
 /// An edge defined by it's two end points.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
@@ -33,7 +32,6 @@ pub struct SimpleEdge<V: PointN> {
     pub to: V,
 }
 
-
 /// Yields information on which side of a line a point lies.
 #[derive(Debug, Clone, Copy)]
 #[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
@@ -41,8 +39,9 @@ pub struct EdgeSideInfo<S> {
     signed_side: S,
 }
 
-impl <S> PartialEq for EdgeSideInfo<S>
-    where S: SpadeNum
+impl<S> PartialEq for EdgeSideInfo<S>
+where
+    S: SpadeNum,
 {
     fn eq(&self, other: &EdgeSideInfo<S>) -> bool {
         if self.is_on_line() || other.is_on_line() {
@@ -53,7 +52,10 @@ impl <S> PartialEq for EdgeSideInfo<S>
     }
 }
 
-impl <S> EdgeSideInfo<S> where S: SpadeNum  {
+impl<S> EdgeSideInfo<S>
+where
+    S: SpadeNum,
+{
     #[doc(hidden)]
     pub fn from_determinant(s: S) -> EdgeSideInfo<S> {
         EdgeSideInfo { signed_side: s }
@@ -91,17 +93,19 @@ impl <S> EdgeSideInfo<S> where S: SpadeNum  {
     /// indicate the relative position of P relative to the edge
     /// B -> A.
     pub fn reversed(&self) -> EdgeSideInfo<S> {
-        EdgeSideInfo { signed_side: -self.signed_side.clone() }
+        EdgeSideInfo {
+            signed_side: -self.signed_side.clone(),
+        }
     }
 }
 
-impl <V> SimpleEdge<V> where V: PointN {
+impl<V> SimpleEdge<V>
+where
+    V: PointN,
+{
     /// Creates a new edge from `from` to `to`.
     pub fn new(from: V, to: V) -> SimpleEdge<V> {
-        SimpleEdge {
-            from: from,
-            to: to,
-        }
+        SimpleEdge { from, to }
     }
 
     /// Projects a point onto the infinite line going through the
@@ -121,7 +125,10 @@ impl <V> SimpleEdge<V> where V: PointN {
     }
 }
 
-impl <V> SimpleEdge<V> where V: TwoDimensional {
+impl<V> SimpleEdge<V>
+where
+    V: TwoDimensional,
+{
     /// Determines on which side of this edge a given point lies.
     ///
     /// # Example:
@@ -145,30 +152,37 @@ impl <V> SimpleEdge<V> where V: TwoDimensional {
         K::side_query(&self, q)
     }
 
-
     /// Checks if this and another edge intersect.
     ///
     /// The edges must not be collinear. Also, `true` is returned if the edges
     /// just touch each other.
     /// # Panics
     /// Panics if both lines are collinear.
-    pub fn intersects_edge_non_collinear<K>(&self, other: &SimpleEdge<V>) -> bool 
-        where K: DelaunayKernel<V::Scalar>
+    pub fn intersects_edge_non_collinear<K>(&self, other: &SimpleEdge<V>) -> bool
+    where
+        K: DelaunayKernel<V::Scalar>,
     {
         let other_from = self.side_query::<K>(&other.from);
         let other_to = self.side_query::<K>(&other.to);
         let self_from = other.side_query::<K>(&self.from);
         let self_to = other.side_query::<K>(&self.to);
 
-        assert!(![&other_from, &other_to, &self_from, &self_to].iter()
-                      .all(|q| q.is_on_line()), 
-                      "intersects_edge_non_collinear: Given edge is collinear.");
+        assert!(
+            ![&other_from, &other_to, &self_from, &self_to]
+                .iter()
+                .all(|q| q.is_on_line()),
+            "intersects_edge_non_collinear: Given edge is collinear."
+        );
 
         other_from != other_to && self_from != self_to
     }
 }
 
-impl <V> SimpleEdge<V> where V: PointN, V::Scalar: SpadeFloat {
+impl<V> SimpleEdge<V>
+where
+    V: PointN,
+    V::Scalar: SpadeFloat,
+{
     /// Yields the nearest point on this edge.
     pub fn nearest_point(&self, query_point: &V) -> V {
         let (p1, p2) = (&self.from, &self.to);
@@ -176,18 +190,15 @@ impl <V> SimpleEdge<V> where V: PointN, V::Scalar: SpadeFloat {
         let s = self.project_point(query_point);
         if V::Scalar::zero() < s && s < one() {
             p1.add(&dir.mul(s))
-
+        } else if s <= V::Scalar::zero() {
+            p1.clone()
         } else {
-            if s <= V::Scalar::zero() {
-                p1.clone()
-            } else {
-                p2.clone()
-            }
+            p2.clone()
         }
     }
 
     /// Returns the squared distance of a given point to its
-    /// projection onto the infinite line going through this edge's start 
+    /// projection onto the infinite line going through this edge's start
     /// and end point.
     pub fn projection_distance2(&self, query_point: &V) -> V::Scalar {
         let s = self.project_point(query_point);
@@ -196,7 +207,7 @@ impl <V> SimpleEdge<V> where V: PointN, V::Scalar: SpadeFloat {
     }
 
     /// Projects a point on this line and returns its relative position.
-    /// 
+    ///
     /// This method will return a value between 0. and 1. (linearly interpolated) if the projected
     /// point lies between `self.from` and `self.to`, a value close to zero (due to rounding errors)
     /// if the projected point is equal to `self.from` and a value smaller than zero if the projected
@@ -209,7 +220,10 @@ impl <V> SimpleEdge<V> where V: PointN, V::Scalar: SpadeFloat {
     }
 }
 
-impl <V: PointN> SpatialObject for SimpleEdge<V> where V::Scalar: SpadeFloat {
+impl<V: PointN> SpatialObject for SimpleEdge<V>
+where
+    V::Scalar: SpadeFloat,
+{
     type Point = V;
 
     fn mbr(&self) -> BoundingRect<V> {
@@ -223,7 +237,7 @@ impl <V: PointN> SpatialObject for SimpleEdge<V> where V::Scalar: SpadeFloat {
 }
 
 /// A triangle, defined by it's three points.
-#[derive(Clone, Copy, Debug, Eq, PartialOrd, Ord, Hash)]
+#[derive(Clone, Copy, Debug, Eq, PartialOrd, Ord)]
 #[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
 pub struct SimpleTriangle<V: PointN> {
     v0: V,
@@ -231,10 +245,13 @@ pub struct SimpleTriangle<V: PointN> {
     v2: V,
 }
 
-impl <V> SimpleTriangle<V> where V: PointN {
+impl<V> SimpleTriangle<V>
+where
+    V: PointN,
+{
     /// Checks if the given points are ordered counter clock wise.
     pub fn new(v0: V, v1: V, v2: V) -> SimpleTriangle<V> {
-        SimpleTriangle { v0: v0, v1: v1, v2: v2 }
+        SimpleTriangle { v0, v1, v2 }
     }
 
     /// Returns the triangle's vertices.
@@ -243,18 +260,22 @@ impl <V> SimpleTriangle<V> where V: PointN {
     }
 }
 
-impl <V: TwoDimensional> SimpleTriangle<V> where V: TwoDimensional {
-
+impl<V: TwoDimensional> SimpleTriangle<V>
+where
+    V: TwoDimensional,
+{
     /// Returns the triangle's doubled area.
     pub fn double_area(&self) -> V::Scalar {
         let b = self.v1.sub(&self.v0);
         let c = self.v2.sub(&self.v0);
         (b.nth(0).clone() * c.nth(1).clone() - b.nth(1).clone() * c.nth(0).clone()).abs()
     }
-
 }
 
-impl <V> PartialEq for SimpleTriangle<V> where V: PointN {
+impl<V> PartialEq for SimpleTriangle<V>
+where
+    V: PointN,
+{
     fn eq(&self, rhs: &SimpleTriangle<V>) -> bool {
         let vl = self.vertices();
         let vr = rhs.vertices();
@@ -268,8 +289,23 @@ impl <V> PartialEq for SimpleTriangle<V> where V: PointN {
     }
 }
 
-impl <V> SimpleTriangle<V> where V: PointN, V::Scalar: SpadeFloat {
+impl<V> std::hash::Hash for SimpleTriangle<V>
+where
+    V: PointN + std::hash::Hash,
+{
+    fn hash<H: std::hash::Hasher>(&self, state: &mut H) {
+        // Needs to be adjusted as PartialEq is overwritten
+        let mut to_sort = [&self.v0, &self.v1, &self.v2];
+        to_sort.sort_by(|l, r| l.lex_compare(r));
+        to_sort.hash(state);
+    }
+}
 
+impl<V> SimpleTriangle<V>
+where
+    V: PointN,
+    V::Scalar: SpadeFloat,
+{
     /// Returns the nearest point lying on any of the triangle's edges.
     pub fn nearest_point_on_edge(&self, pos: &V) -> V {
         let e0 = SimpleEdge::new(self.v0.clone(), self.v1.clone());
@@ -291,9 +327,13 @@ impl <V> SimpleTriangle<V> where V: PointN, V::Scalar: SpadeFloat {
     }
 }
 
-impl <V> SimpleTriangle<V> where V: TwoDimensional, V::Scalar: SpadeFloat {
-
+impl<V> SimpleTriangle<V>
+where
+    V: TwoDimensional,
+    V::Scalar: SpadeFloat,
+{
     /// Returns the position of the triangle's circumcenter.
+    #[allow(clippy::many_single_char_names)]
     pub fn circumcenter(&self) -> V {
         let one: V::Scalar = One::one();
         let two = one + one;
@@ -325,10 +365,13 @@ impl <V> SimpleTriangle<V> where V: TwoDimensional, V::Scalar: SpadeFloat {
     }
 }
 
-
-impl <V> SpatialObject for SimpleTriangle<V> where V: TwoDimensional, V::Scalar: SpadeFloat {
+impl<V> SpatialObject for SimpleTriangle<V>
+where
+    V: TwoDimensional,
+    V::Scalar: SpadeFloat,
+{
     type Point = V;
-    
+
     fn mbr(&self) -> BoundingRect<V> {
         let mut result = BoundingRect::from_corners(&self.v0, &self.v1);
         result.add_point(self.v2.clone());
@@ -336,12 +379,12 @@ impl <V> SpatialObject for SimpleTriangle<V> where V: TwoDimensional, V::Scalar:
     }
 
     fn distance2(&self, point: &V) -> V::Scalar {
-        
-        let ordered_ccw = TrivialKernel::is_ordered_ccw(
-            &self.v0, &self.v1, &self.v2);
-        for i in 0 .. 3 {
-            let edge = SimpleEdge::new(self.vertices()[i].clone(), 
-                                       self.vertices()[(i + 1) % 3].clone());
+        let ordered_ccw = TrivialKernel::is_ordered_ccw(&self.v0, &self.v1, &self.v2);
+        for i in 0..3 {
+            let edge = SimpleEdge::new(
+                self.vertices()[i].clone(),
+                self.vertices()[(i + 1) % 3].clone(),
+            );
             if edge.side_query::<TrivialKernel>(point).is_on_right_side() == ordered_ccw {
                 return edge.distance2(point);
             }
@@ -354,7 +397,13 @@ impl <V> SpatialObject for SimpleTriangle<V> where V: TwoDimensional, V::Scalar:
 /// An n-dimensional circle, defined by its origin and radius.
 #[derive(Clone, Copy, Debug, PartialEq, Eq, PartialOrd, Ord, Hash)]
 #[cfg_attr(feature = "serde_serialize", derive(Serialize, Deserialize))]
-#[cfg_attr(feature = "serde_serialize", serde(bound(serialize="V: Serialize, V::Scalar: Serialize", deserialize="V: Deserialize<'de>, V::Scalar: Deserialize<'de>")))]
+#[cfg_attr(
+    feature = "serde_serialize",
+    serde(bound(
+        serialize = "V: Serialize, V::Scalar: Serialize",
+        deserialize = "V: Deserialize<'de>, V::Scalar: Deserialize<'de>"
+    ))
+)]
 pub struct SimpleCircle<V: PointN> {
     /// The circle's center.
     pub center: V,
@@ -362,18 +411,22 @@ pub struct SimpleCircle<V: PointN> {
     pub radius: V::Scalar,
 }
 
-impl <V> SimpleCircle<V> where V: PointN, V::Scalar: SpadeFloat {
-
+impl<V> SimpleCircle<V>
+where
+    V: PointN,
+    V::Scalar: SpadeFloat,
+{
     /// Create a new circle.
     pub fn new(center: V, radius: V::Scalar) -> SimpleCircle<V> {
-        SimpleCircle {
-            center: center,
-            radius: radius,
-        }
+        SimpleCircle { center, radius }
     }
 }
 
-impl <V> SpatialObject for SimpleCircle<V> where V: PointN, V::Scalar: SpadeFloat {
+impl<V> SpatialObject for SimpleCircle<V>
+where
+    V: PointN,
+    V::Scalar: SpadeFloat,
+{
     type Point = V;
 
     fn mbr(&self) -> BoundingRect<V> {
@@ -398,9 +451,9 @@ impl <V> SpatialObject for SimpleCircle<V> where V: PointN, V::Scalar: SpadeFloa
 
 #[cfg(test)]
 mod test {
-    use super::{SimpleEdge, SimpleTriangle, SimpleCircle};
-    use traits::SpatialObject;
-    use kernels::{TrivialKernel, FloatKernel};
+    use super::{SimpleCircle, SimpleEdge, SimpleTriangle};
+    use crate::kernels::{FloatKernel, TrivialKernel};
+    use crate::traits::SpatialObject;
     use cgmath::{Point2, Point3};
 
     #[test]
@@ -416,9 +469,15 @@ mod test {
     #[test]
     fn test_edge_side() {
         let e = SimpleEdge::new(Point2::new(0f32, 0.), Point2::new(1., 1.));
-        assert!(e.side_query::<TrivialKernel>(&Point2::new(1.0, 0.0)).is_on_right_side());
-        assert!(e.side_query::<TrivialKernel>(&Point2::new(0.0, 1.0)).is_on_left_side());
-        assert!(e.side_query::<TrivialKernel>(&Point2::new(0.5, 0.5)).is_on_line());
+        assert!(e
+            .side_query::<TrivialKernel>(&Point2::new(1.0, 0.0))
+            .is_on_right_side());
+        assert!(e
+            .side_query::<TrivialKernel>(&Point2::new(0.0, 1.0))
+            .is_on_left_side());
+        assert!(e
+            .side_query::<TrivialKernel>(&Point2::new(0.5, 0.5))
+            .is_on_line());
     }
 
     #[test]
@@ -433,7 +492,7 @@ mod test {
         assert!(e2.intersects_edge_non_collinear::<TrivialKernel>(&e3));
         assert!(e3.intersects_edge_non_collinear::<TrivialKernel>(&e2));
     }
-    
+
     #[test]
     fn test_intersects_end_points() {
         // Check for intersection of one endpoint touching another edge
@@ -471,6 +530,30 @@ mod test {
         relative_eq!(t.distance2(&Point2::new(1., 1.)), 0.5);
         relative_eq!(t.distance2(&Point2::new(0.5, 0.5)), 0.0);
         assert!(t.distance2(&Point2::new(0.6, 0.6)) > 0.001);
+    }
+
+    #[test]
+    fn test_triangle_hash() {
+        use std::hash::{Hash, Hasher};
+        let v1 = Point2::new(4, 5);
+        let v2 = Point2::new(1, 2);
+        let v3 = Point2::new(10, 1);
+        let tri1 = SimpleTriangle::new(v1, v2, v3);
+        let tri2 = SimpleTriangle::new(v1, v3, v2);
+        let tri3 = SimpleTriangle::new(v1, v1, v2);
+
+        let get_hash = |triangle: SimpleTriangle<_>| {
+            let mut hasher = std::collections::hash_map::DefaultHasher::new();
+            triangle.hash(&mut hasher);
+            hasher.finish()
+        };
+
+        let hash1 = get_hash(tri1);
+        let hash2 = get_hash(tri2);
+        let hash3 = get_hash(tri3);
+
+        assert_eq!(hash1, hash2);
+        assert_ne!(hash1, hash3);
     }
 
     #[test]

@@ -6,10 +6,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use crate::graphics::RenderData;
 use cgmath::Point2;
 use glium::glutin;
 use glium::glutin::{ElementState, Event, MouseButton, VirtualKeyCode, WindowEvent};
-use graphics::RenderData;
 use rand::distributions::Standard;
 use rand::Rng;
 use spade::delaunay::DelaunayTriangulation;
@@ -36,8 +36,8 @@ pub fn run() {
     print_help();
     let mut dirty = false;
     events_loop.run_forever(|event| {
-        match event {
-            Event::WindowEvent { event, .. } => match event {
+        if let Event::WindowEvent { event, .. } = event {
+            match event {
                 WindowEvent::Refresh => render_data.draw(&display),
                 WindowEvent::CloseRequested => return glutin::ControlFlow::Break,
                 WindowEvent::MouseInput { state, button, .. }
@@ -65,8 +65,8 @@ pub fn run() {
                     let y = position.y as i32;
                     // Transform x, y into the range [-1 , 1]
                     let y = h as i32 - y;
-                    let x = (x as f64 / w as f64) * 2. - 1.;
-                    let y = (y as f64 / h as f64) * 2. - 1.;
+                    let x = (f64::from(x) / f64::from(w)) * 2. - 1.;
+                    let y = (f64::from(y) / f64::from(h)) * 2. - 1.;
                     last_point = Point2::new(x, y);
                     let selection = get_selected_vertices(&delaunay, last_point);
                     render_data.update_selection(&display, &selection);
@@ -90,7 +90,7 @@ pub fn run() {
                             let mut rng = ::rand::thread_rng();
 
                             let seed = rng.sample(Standard);
-                            let new_points = ::random_points_with_seed(num, &seed);
+                            let new_points = crate::random_points_with_seed(num, &seed);
                             for point in new_points.into_iter() {
                                 delaunay.insert(point);
                             }
@@ -101,8 +101,7 @@ pub fn run() {
                     }
                 }
                 _ => (),
-            },
-            _ => (),
+            }
         }
         if dirty {
             render_data.draw(&display);
@@ -111,6 +110,7 @@ pub fn run() {
     });
 }
 
+#[allow(clippy::map_clone, clippy::clone_on_copy)]
 fn get_selected_vertices(delaunay: &ExampleTriangulation, point: Point2<f64>) -> Vec<Point2<f64>> {
     let mut points = Vec::new();
     points.extend(delaunay.nearest_neighbor(&point).map(|p| (*p).clone()));

@@ -1242,10 +1242,14 @@ where
     /// Returns all objects (partially) contained in a rectangle
     pub fn lookup_in_rectangle(&self, query_rect: &BoundingRect<T::Point>) -> Vec<&T> {
         let mut result = Vec::new();
+        self.lookup_in_rectangle_to(&mut result, query_rect);
+        result
+    }
+    /// Writes all objects (partially) contained in a rectangle. Does not clear the vector.
+    pub fn lookup_in_rectangle_to<'a>(&'a self, mut result: &mut Vec<&'a T>, query_rect: &BoundingRect<T::Point>) {
         if self.size > 0 {
             self.root.lookup_in_rectangle(&mut result, query_rect);
         }
-        result
     }
 
     /// Returns all objects (partially) contained in a circle.
@@ -1258,11 +1262,23 @@ where
         radius2: &<T::Point as PointN>::Scalar,
     ) -> Vec<&T> {
         let mut result = Vec::new();
+        self.lookup_in_circle_to(&mut result, circle_origin, radius2);
+        result
+    }
+    /// Writes all objects (partially) contained in a circle. Does not clear the vector.
+    ///
+    /// Note that `radius2` is the circle's squared radius, not the actual radius.
+    /// An object is contained if a part of it lies within the circle.
+    pub fn lookup_in_circle_to<'a>(
+        &'a self,
+        mut result: &mut Vec<&'a T>,
+        circle_origin: &T::Point,
+        radius2: &<T::Point as PointN>::Scalar,
+    ) {
         if self.size > 0 {
             self.root
                 .lookup_in_circle(&mut result, circle_origin, radius2);
         }
-        result
     }
 }
 

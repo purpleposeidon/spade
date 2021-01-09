@@ -32,9 +32,9 @@ approx = "0.2.*"
 version = "*"
 features = ["serde"]
 
-[profile.bench]
-opt-level = 3
-debug-assertions = false
+#[profile.bench]
+#opt-level = 3
+#debug-assertions = false
 
 [badges]
 maintenance = { status = "passively-maintained" }

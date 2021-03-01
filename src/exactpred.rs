@@ -10,7 +10,7 @@
 #![allow(clippy::all)]
 
 //! This is a direct transcript of the sourcecode and algorithms provided by
-//! Jonathan Richard Shewchuk (https://www.cs.cmu.edu/~quake/robust.html)
+//! Jonathan Richard Shewchuk (<https://www.cs.cmu.edu/~quake/robust.html>)
 //! See the paper and the source code for more information.
 //!
 //! The module offers adaptive and precise calculations for orientation queries
